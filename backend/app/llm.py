@@ -140,12 +140,7 @@ class LLMClient:
             content_parts: List[str] = []
             tool_calls: List[Dict[str, Any]] = []
 
-            stream = False
-            async for _ in self.chat(working, tools, stream=False):
-                pass
-
-            # We need the full message, including tool_calls. Do a non-stream
-            # call to fetch the complete assistant message.
+            # Fetch the complete assistant message (may include tool_calls).
             response_data = await self._complete(working, tools)
             msg = response_data["choices"][0]["message"]
             content = msg.get("content")
@@ -183,7 +178,16 @@ class LLMClient:
 
         return {"content": "I could not produce a complete answer within the allowed steps.", "tool_calls": []}
 
-    async def _complete(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _complete(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]], max_retries: int = 3) -> Dict[str, Any]:
+        """Send a non-streamed chat completion, returning the full response.
+
+        Free OpenRouter models are frequently rate-limited or overloaded
+        (HTTP 429 / "Service temporarily overloaded"), so we retry transient
+        failures with a short backoff. Permanent errors (bad model, auth) are
+        raised immediately.
+        """
+        import asyncio
+
         payload: Dict[str, Any] = {
             "model": settings.model,
             "messages": messages,
@@ -191,12 +195,46 @@ class LLMClient:
             "tool_choice": "auto",
             "stream": False,
         }
+        headers = {"Authorization": f"Bearer {settings.openrouter_api_key}", "Content-Type": "application/json"}
+
         async with httpx.AsyncClient(timeout=120) as client:
-            response = await client.post(
-                f"{settings.openrouter_base_url}/chat/completions",
-                headers=self.headers,
-                json=payload,
-            )
-            if response.status_code != 200:
-                raise LLMError(f"LLM error {response.status_code}: {response.text}")
-            return response.json()
+            last_error: Optional[str] = None
+            for attempt in range(max_retries + 1):
+                try:
+                    response = await client.post(
+                        f"{settings.openrouter_base_url}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    )
+                except httpx.HTTPError as e:
+                    last_error = f"network error: {e}"
+                    retryable = True
+                else:
+                    try:
+                        data = response.json()
+                    except ValueError:
+                        data = {}
+                        last_error = f"invalid JSON body: {response.text[:200]}"
+                        retryable = False
+                    else:
+                        error_obj = data.get("error") if isinstance(data, dict) else None
+                        if response.status_code == 200 and not error_obj:
+                            if "choices" not in data:
+                                last_error = f"unexpected payload: {response.text[:200]}"
+                                retryable = False
+                            else:
+                                return data
+                        else:
+                            message = (
+                                error_obj.get("message") if isinstance(error_obj, dict) else ""
+                            ) or response.text
+                            last_error = f"HTTP {response.status_code}: {message[:250]}"
+                            # 429 (rate limit) and 5xx (overload) are transient.
+                            retryable = response.status_code in (429, 500, 502, 503, 504)
+
+                if retryable and attempt < max_retries:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                raise LLMError(f"LLM error: {last_error}")
+
+        raise LLMError(f"LLM error: {last_error}")
