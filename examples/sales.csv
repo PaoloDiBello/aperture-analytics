@@ -1,0 +1,19 @@
+product,region,month,units,revenue,profit
+Widget A,North,2024-01,120,4800,960
+Widget A,North,2024-02,98,3920,780
+Widget A,North,2024-03,76,3040,610
+Widget A,South,2024-01,150,6000,1200
+Widget A,South,2024-02,132,5280,1050
+Widget A,South,2024-03,140,5600,1120
+Widget B,North,2024-01,200,6000,1500
+Widget B,North,2024-02,180,5400,1350
+Widget B,North,2024-03,160,4800,1200
+Widget B,South,2024-01,230,6900,1720
+Widget B,South,2024-02,210,6300,1570
+Widget B,South,2024-03,205,6150,1530
+Widget C,North,2024-01,90,2700,400
+Widget C,North,2024-02,85,2550,370
+Widget C,North,2024-03,70,2100,300
+Widget C,South,2024-01,110,3300,490
+Widget C,South,2024-02,105,3150,460
+Widget C,South,2024-03,100,3000,430
