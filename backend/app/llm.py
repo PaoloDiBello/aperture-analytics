@@ -119,7 +119,11 @@ class LLMClient:
                 if response.status_code != 200:
                     raise LLMError(f"LLM error {response.status_code}: {response.text}")
                 data = response.json()
-                content = data["choices"][0]["message"].get("content") or ""
+                choices = data.get("choices")
+                if not choices:
+                    err = data.get("error") or data
+                    raise LLMError(f"LLM returned no completion: {err}")
+                content = choices[0].get("message", {}).get("content") or ""
                 yield content
 
     async def chat_with_tools(
