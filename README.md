@@ -3,9 +3,9 @@
 **Ask anything. It sees into your data.** Ask natural-language questions about
 a CSV, answered by a tool-using AI agent.
 
-Upload a CSV on the left, ask questions on the right — like "Which product
-generated the most revenue?" or "Why did revenue drop in March?" — and a
-frontend-friendly agent decides which tools to call, runs real calculations on
+Upload a CSV on a clean landing page, then ask questions in the workspace — like
+"Which product generated the most revenue?" or "Why did revenue drop in March?"
+A frontend-friendly agent decides which tools to call, runs real calculations on
 your data, and answers with *evidence, not guesses*.
 
 ```
@@ -57,6 +57,7 @@ prompt/tool definitions, and what was done by the coding agent vs. hand-written.
 | Layer      | Choice                                                |
 | ---------- | ----------------------------------------------------- |
 | Frontend   | React 19 + TypeScript + Vite                          |
+| Styling    | Tailwind CSS v4 + shadcn-style primitives (`src/ui`)  |
 | Charts     | Recharts                                              |
 | Backend    | Python + FastAPI                                      |
 | Data       | Pandas (wrapped behind a small `Dataframe` abstraction) |
@@ -69,22 +70,29 @@ prompt/tool definitions, and what was done by the coding agent vs. hand-written.
 
 ```
 aperture-analytics/
-├── frontend/                 # React + Vite
+├── frontend/                 # React + Vite (Tailwind v4)
 │   └── src/
-│       ├── App.tsx           # upload → preview → chat orchestration
+│       ├── App.tsx           # landing (upload) + workspace (chat) orchestration
 │       ├── api.ts            # typed API client
-│       └── components/
-│           ├── FileUpload.tsx
-│           ├── PreviewTable.tsx
-│           └── Answer.tsx
+│       ├── types.ts          # shared response/preview types
+│       ├── lib/utils.ts      # cn() class-merge helper
+│       ├── components/
+│       │   └── Answer.tsx    # safe, tiny markdown-lite renderer for answers
+│       └── ui/               # shadcn-style primitives
+│           ├── badge.tsx
+│           ├── button.tsx
+│           ├── card.tsx
+│           ├── input.tsx
+│           └── separator.tsx
 ├── backend/                  # FastAPI
 │   └── app/
 │       ├── main.py           # app + CORS + routers
+│       ├── config.py         # settings (OpenRouter, CORS origins)
 │       ├── frame.py          # Dataframe wrapper (safe data ops)
 │       ├── store.py          # in-memory dataset store (V1)
 │       ├── tools.py          # tool schemas + ToolExecutor
 │       ├── agent.py          # agent loop + prompt
-│       ├── llm.py            # OpenRouter client (tool calling)
+│       ├── llm.py            # OpenRouter client (tool calling, retries)
 │       └── api/
 │           ├── upload.py     # POST /api/upload
 │           └── query.py      # POST /api/query
@@ -105,12 +113,16 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Set your API key (OpenRouter — free models available):
+Set your OpenRouter API key:
 
 ```bash
 cp .env.example .env
 # edit .env → OPENROUTER_API_KEY=...
 ```
+
+The default model is `openai/gpt-4o-mini` (reliable tool calling). Free models
+sometimes work but are frequently rate-limited; set `OPENROUTER_MODEL` to any
+OpenRouter model id if you'd like to try others.
 
 Run the API:
 
@@ -127,7 +139,8 @@ cp .env.example .env.local      # VITE_API_BASE_URL=http://localhost:8000
 npm run dev
 ```
 
-Open `http://localhost:5173`, upload `examples/sales.csv`, and ask a question.
+Open `http://localhost:5173`, drag & drop or choose `examples/sales.csv`, then
+ask a question in the assistant panel.
 
 ---
 
@@ -176,6 +189,13 @@ Upload `examples/sales.csv` and ask:
 cd backend
 .\.venv\Scripts\python -m test_tools   # tool executor sanity (no network)
 .\.venv\Scripts\python -m test_agent   # agent loop with stubbed LLM (no network)
+```
+
+The frontend build (which runs `tsc` type-checking) can be verified with:
+
+```bash
+cd frontend
+npm run build
 ```
 
 ---

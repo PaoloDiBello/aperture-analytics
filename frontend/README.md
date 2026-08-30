@@ -1,32 +1,45 @@
-# React + TypeScript + Vite
+# Aperture Analytics — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite frontend for Aperture Analytics. Styled with
+Tailwind CSS v4 and small shadcn-style primitives under `src/ui/`.
 
-Currently, two official plugins are available:
+## Scripts
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install          # install dependencies
+npm run dev          # start Vite dev server (http://localhost:5173)
+npm run build        # type-check (tsc) + production build into dist/
+npm run preview      # preview the production build locally
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Setup
+
+Point the app at the backend by copying the example env file:
+
+```bash
+cp .env.example .env.local
+# VITE_API_BASE_URL=http://localhost:8000
+```
+
+## Project layout
+
+```
+src/
+├── main.tsx            # entry point (imports index.css)
+├── App.tsx             # landing (CSV upload) + workspace (assistant chat)
+├── api.ts              # typed client for /api/upload and /api/query
+├── types.ts            # DatasetPreview, UploadResponse, QueryResponse
+├── index.css           # Tailwind v4 import + dark design tokens
+├── lib/utils.ts        # cn() — clsx + tailwind-merge
+├── components/
+│   └── Answer.tsx      # tiny markdown-lite renderer for assistant answers
+└── ui/                 # shadcn-style primitives (Button, Card, Input, Badge, Separator)
+```
+
+## Styling notes
+
+- Tailwind v4 is wired through `@tailwindcss/vite` and the `@import "tailwindcss"`
+  in `src/index.css`.
+- The dark theme uses CSS variables (oklch) mapped to Tailwind tokens
+  (`background`, `card`, `primary`, `muted`, `border`, …).
+- The `@` alias (`@/lib/utils`) is configured in `vite.config.ts`.
